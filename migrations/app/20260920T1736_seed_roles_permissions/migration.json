@@ -1,0 +1,9 @@
+{
+  "from": "ea93de962849a80f9a208a78bb2433977a799a99a77ad2cd40786f4352275652",
+  "to": "ea93de962849a80f9a208a78bb2433977a799a99a77ad2cd40786f4352275652",
+  "providedInvariants": [
+    "seed.roles_permissions.v1"
+  ],
+  "createdAt": "2026-09-20T17:36:22.507Z",
+  "migrationHash": "a32d8af1bb70c2503af2248ae9fbc20ac139813dcbd509a87dcb7b8d6fd89998"
+}

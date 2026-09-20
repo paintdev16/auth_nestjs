@@ -1,0 +1,566 @@
+[
+  {
+    "id": "table.permission",
+    "label": "Create table \"permission\"",
+    "summary": "Creates table \"permission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "permission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"permission\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"permission\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"permission\"",
+        "sql": "CREATE TABLE \"public\".\"permission\" (\n  \"id\" SERIAL NOT NULL,\n  \"name\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"permission\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"permission\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.role",
+    "label": "Create table \"role\"",
+    "summary": "Creates table \"role\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "role"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"role\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"role\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"role\"",
+        "sql": "CREATE TABLE \"public\".\"role\" (\n  \"id\" SERIAL NOT NULL,\n  \"name\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"role\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"role\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.rolePermission",
+    "label": "Create table \"rolePermission\"",
+    "summary": "Creates table \"rolePermission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "rolePermission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"rolePermission\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"rolePermission\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"rolePermission\"",
+        "sql": "CREATE TABLE \"public\".\"rolePermission\" (\n  \"permissionId\" int4 NOT NULL,\n  \"roleId\" int4 NOT NULL,\n  PRIMARY KEY (\"roleId\", \"permissionId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"rolePermission\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"rolePermission\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.userRole",
+    "label": "Create table \"userRole\"",
+    "summary": "Creates table \"userRole\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "userRole"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"userRole\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userRole\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"userRole\"",
+        "sql": "CREATE TABLE \"public\".\"userRole\" (\n  \"roleId\" int4 NOT NULL,\n  \"userId\" int4 NOT NULL,\n  PRIMARY KEY (\"userId\", \"roleId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"userRole\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userRole\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.permission.permission_name_key",
+    "label": "Add unique constraint on \"permission\" (name)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "permission_name_key",
+        "table": "permission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"permission_name_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "permission_name_key",
+          "public",
+          "\"public\".\"permission\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"permission_name_key\"",
+        "sql": "ALTER TABLE \"public\".\"permission\" ADD CONSTRAINT \"permission_name_key\" UNIQUE (\"name\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"permission_name_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "permission_name_key",
+          "public",
+          "\"public\".\"permission\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.role.role_name_key",
+    "label": "Add unique constraint on \"role\" (name)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "role_name_key",
+        "table": "role"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"role_name_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "role_name_key",
+          "public",
+          "\"public\".\"role\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"role_name_key\"",
+        "sql": "ALTER TABLE \"public\".\"role\" ADD CONSTRAINT \"role_name_key\" UNIQUE (\"name\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"role_name_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "role_name_key",
+          "public",
+          "\"public\".\"role\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.rolePermission.rolePermission_permissionId_idx_f46fcdf5",
+    "label": "Create index \"rolePermission_permissionId_idx_f46fcdf5\" on \"rolePermission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "rolePermission_permissionId_idx_f46fcdf5",
+        "table": "rolePermission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"rolePermission_permissionId_idx_f46fcdf5\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"rolePermission_permissionId_idx_f46fcdf5\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"rolePermission_permissionId_idx_f46fcdf5\"",
+        "sql": "CREATE INDEX \"rolePermission_permissionId_idx_f46fcdf5\" ON \"public\".\"rolePermission\" (\"permissionId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"rolePermission_permissionId_idx_f46fcdf5\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"rolePermission_permissionId_idx_f46fcdf5\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.rolePermission.rolePermission_roleId_idx_ffccc9a4",
+    "label": "Create index \"rolePermission_roleId_idx_ffccc9a4\" on \"rolePermission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "rolePermission_roleId_idx_ffccc9a4",
+        "table": "rolePermission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"rolePermission_roleId_idx_ffccc9a4\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"rolePermission_roleId_idx_ffccc9a4\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"rolePermission_roleId_idx_ffccc9a4\"",
+        "sql": "CREATE INDEX \"rolePermission_roleId_idx_ffccc9a4\" ON \"public\".\"rolePermission\" (\"roleId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"rolePermission_roleId_idx_ffccc9a4\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"rolePermission_roleId_idx_ffccc9a4\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.userRole.userRole_roleId_idx_ffccc9a4",
+    "label": "Create index \"userRole_roleId_idx_ffccc9a4\" on \"userRole\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "userRole_roleId_idx_ffccc9a4",
+        "table": "userRole"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"userRole_roleId_idx_ffccc9a4\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userRole_roleId_idx_ffccc9a4\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"userRole_roleId_idx_ffccc9a4\"",
+        "sql": "CREATE INDEX \"userRole_roleId_idx_ffccc9a4\" ON \"public\".\"userRole\" (\"roleId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"userRole_roleId_idx_ffccc9a4\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userRole_roleId_idx_ffccc9a4\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.userRole.userRole_userId_idx_a489d58a",
+    "label": "Create index \"userRole_userId_idx_a489d58a\" on \"userRole\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "userRole_userId_idx_a489d58a",
+        "table": "userRole"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"userRole_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userRole_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"userRole_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"userRole_userId_idx_a489d58a\" ON \"public\".\"userRole\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"userRole_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userRole_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.rolePermission.rolePermission_roleId_fkey",
+    "label": "Add foreign key \"rolePermission_roleId_fkey\" on \"rolePermission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "rolePermission_roleId_fkey",
+        "table": "rolePermission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"rolePermission_roleId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "rolePermission_roleId_fkey",
+          "public",
+          "\"public\".\"rolePermission\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"rolePermission_roleId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"rolePermission\"\nADD CONSTRAINT \"rolePermission_roleId_fkey\"\nFOREIGN KEY (\"roleId\")\nREFERENCES \"public\".\"role\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"rolePermission_roleId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "rolePermission_roleId_fkey",
+          "public",
+          "\"public\".\"rolePermission\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.rolePermission.rolePermission_permissionId_fkey",
+    "label": "Add foreign key \"rolePermission_permissionId_fkey\" on \"rolePermission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "rolePermission_permissionId_fkey",
+        "table": "rolePermission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"rolePermission_permissionId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "rolePermission_permissionId_fkey",
+          "public",
+          "\"public\".\"rolePermission\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"rolePermission_permissionId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"rolePermission\"\nADD CONSTRAINT \"rolePermission_permissionId_fkey\"\nFOREIGN KEY (\"permissionId\")\nREFERENCES \"public\".\"permission\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"rolePermission_permissionId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "rolePermission_permissionId_fkey",
+          "public",
+          "\"public\".\"rolePermission\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.userRole.userRole_userId_fkey",
+    "label": "Add foreign key \"userRole_userId_fkey\" on \"userRole\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "userRole_userId_fkey",
+        "table": "userRole"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"userRole_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "userRole_userId_fkey",
+          "public",
+          "\"public\".\"userRole\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"userRole_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"userRole\"\nADD CONSTRAINT \"userRole_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"userRole_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "userRole_userId_fkey",
+          "public",
+          "\"public\".\"userRole\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.userRole.userRole_roleId_fkey",
+    "label": "Add foreign key \"userRole_roleId_fkey\" on \"userRole\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "userRole_roleId_fkey",
+        "table": "userRole"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"userRole_roleId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "userRole_roleId_fkey",
+          "public",
+          "\"public\".\"userRole\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"userRole_roleId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"userRole\"\nADD CONSTRAINT \"userRole_roleId_fkey\"\nFOREIGN KEY (\"roleId\")\nREFERENCES \"public\".\"role\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"userRole_roleId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "userRole_roleId_fkey",
+          "public",
+          "\"public\".\"userRole\""
+        ]
+      }
+    ]
+  }
+]

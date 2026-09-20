@@ -1,0 +1,245 @@
+[
+  {
+    "id": "column.public.user.roleId",
+    "label": "Add column \"roleId\" to \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "roleId",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"roleId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "roleId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"roleId\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD COLUMN \"roleId\" int4"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"roleId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "roleId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "backfill.user_role",
+    "label": "Assign one role to each user",
+    "summary": "Prioritizes ADMIN, then CLIENT, when a user has multiple roles",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "check whether users need a role",
+        "sql": "SELECT EXISTS (\n  SELECT 1 FROM \"public\".\"user\" WHERE \"roleId\" IS NULL\n) AS \"result\"",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "copy the highest-priority role to each user",
+        "sql": "UPDATE \"public\".\"user\" u\nSET \"roleId\" = selected_role.\"roleId\"\nFROM (\n  SELECT DISTINCT ON (ur.\"userId\")\n    ur.\"userId\",\n    ur.\"roleId\"\n  FROM \"public\".\"userRole\" ur\n  JOIN \"public\".\"role\" r ON r.\"id\" = ur.\"roleId\"\n  ORDER BY\n    ur.\"userId\",\n    CASE r.\"name\"\n      WHEN 'ADMIN' THEN 1\n      WHEN 'CLIENT' THEN 2\n      ELSE 3\n    END,\n    ur.\"roleId\"\n) selected_role\nWHERE selected_role.\"userId\" = u.\"id\"\n  AND u.\"roleId\" IS NULL",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify every user has exactly one role",
+        "sql": "SELECT NOT EXISTS (\n  SELECT 1 FROM \"public\".\"user\" WHERE \"roleId\" IS NULL\n) AS \"result\"",
+        "params": []
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.setNotNull.user.roleId",
+    "label": "Set NOT NULL on \"user\".\"roleId\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "roleId",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"roleId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "roleId"
+        ]
+      },
+      {
+        "description": "ensure no NULL values in \"roleId\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"public\".\"user\" WHERE \"roleId\" IS NULL) AS \"result\"",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "set NOT NULL on \"roleId\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ALTER COLUMN \"roleId\" SET NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"roleId\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "roleId",
+          "NO"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.user.user_roleId_idx_ffccc9a4",
+    "label": "Create index \"user_roleId_idx_ffccc9a4\" on \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "user_roleId_idx_ffccc9a4",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"user_roleId_idx_ffccc9a4\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"user_roleId_idx_ffccc9a4\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"user_roleId_idx_ffccc9a4\"",
+        "sql": "CREATE INDEX \"user_roleId_idx_ffccc9a4\" ON \"public\".\"user\" (\"roleId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"user_roleId_idx_ffccc9a4\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"user_roleId_idx_ffccc9a4\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.user.user_roleId_fkey",
+    "label": "Add foreign key \"user_roleId_fkey\" on \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "user_roleId_fkey",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"user_roleId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "user_roleId_fkey",
+          "public",
+          "\"public\".\"user\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"user_roleId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"user\"\nADD CONSTRAINT \"user_roleId_fkey\"\nFOREIGN KEY (\"roleId\")\nREFERENCES \"public\".\"role\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"user_roleId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "user_roleId_fkey",
+          "public",
+          "\"public\".\"user\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropTable.userRole",
+    "label": "Drop table \"userRole\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "userRole"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"userRole\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userRole\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop table \"userRole\"",
+        "sql": "DROP TABLE \"public\".\"userRole\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"userRole\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userRole\""
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "id": "seed.roles_permissions",
+    "label": "Seed ADMIN and CLIENT roles with permissions",
+    "summary": "Creates the initial RBAC roles and permission assignments",
+    "operationClass": "data",
+    "invariantId": "seed.roles_permissions.v1",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "rolePermission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "check whether the RBAC seed is incomplete",
+        "sql": "SELECT NOT \"result\" AS \"result\" FROM (SELECT (\n  (SELECT COUNT(*) FROM \"public\".\"role\" WHERE \"name\" IN ('ADMIN', 'CLIENT')) = 2\n  AND (SELECT COUNT(*) FROM \"public\".\"permission\" WHERE \"name\" IN (\n    'users.read',\n    'users.update',\n    'users.delete',\n    'roles.manage',\n    'permissions.manage',\n    'profile.read',\n    'profile.update'\n  )) = 7\n  AND (SELECT COUNT(*)\n    FROM \"public\".\"rolePermission\" rp\n    JOIN \"public\".\"role\" r ON r.\"id\" = rp.\"roleId\"\n    JOIN \"public\".\"permission\" p ON p.\"id\" = rp.\"permissionId\"\n    WHERE r.\"name\" = 'ADMIN'\n  ) = 7\n  AND (SELECT COUNT(*)\n    FROM \"public\".\"rolePermission\" rp\n    JOIN \"public\".\"role\" r ON r.\"id\" = rp.\"roleId\"\n    JOIN \"public\".\"permission\" p ON p.\"id\" = rp.\"permissionId\"\n    WHERE r.\"name\" = 'CLIENT'\n      AND p.\"name\" IN ('profile.read', 'profile.update')\n  ) = 2\n  AND NOT EXISTS (\n    SELECT 1\n    FROM \"public\".\"user\" u\n    WHERE NOT EXISTS (\n      SELECT 1\n      FROM \"public\".\"userRole\" ur\n      JOIN \"public\".\"role\" r ON r.\"id\" = ur.\"roleId\"\n      WHERE ur.\"userId\" = u.\"id\"\n        AND r.\"name\" = 'CLIENT'\n    )\n  )\n) AS \"result\") seed",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "insert the initial roles",
+        "sql": "INSERT INTO \"public\".\"role\" (\"name\")\nVALUES ('ADMIN'), ('CLIENT')\nON CONFLICT (\"name\") DO NOTHING",
+        "params": []
+      },
+      {
+        "description": "insert the initial permissions",
+        "sql": "INSERT INTO \"public\".\"permission\" (\"name\")\nVALUES\n  ('users.read'),\n  ('users.update'),\n  ('users.delete'),\n  ('roles.manage'),\n  ('permissions.manage'),\n  ('profile.read'),\n  ('profile.update')\nON CONFLICT (\"name\") DO NOTHING",
+        "params": []
+      },
+      {
+        "description": "grant every permission to ADMIN",
+        "sql": "INSERT INTO \"public\".\"rolePermission\" (\"roleId\", \"permissionId\")\nSELECT r.\"id\", p.\"id\"\nFROM \"public\".\"role\" r\nCROSS JOIN \"public\".\"permission\" p\nWHERE r.\"name\" = 'ADMIN'\n  AND p.\"name\" IN (\n    'users.read',\n    'users.update',\n    'users.delete',\n    'roles.manage',\n    'permissions.manage',\n    'profile.read',\n    'profile.update'\n  )\nON CONFLICT (\"roleId\", \"permissionId\") DO NOTHING",
+        "params": []
+      },
+      {
+        "description": "grant profile permissions to CLIENT",
+        "sql": "INSERT INTO \"public\".\"rolePermission\" (\"roleId\", \"permissionId\")\nSELECT r.\"id\", p.\"id\"\nFROM \"public\".\"role\" r\nCROSS JOIN \"public\".\"permission\" p\nWHERE r.\"name\" = 'CLIENT'\n  AND p.\"name\" IN ('profile.read', 'profile.update')\nON CONFLICT (\"roleId\", \"permissionId\") DO NOTHING",
+        "params": []
+      },
+      {
+        "description": "assign CLIENT to existing users",
+        "sql": "INSERT INTO \"public\".\"userRole\" (\"userId\", \"roleId\")\nSELECT u.\"id\", r.\"id\"\nFROM \"public\".\"user\" u\nCROSS JOIN \"public\".\"role\" r\nWHERE r.\"name\" = 'CLIENT'\nON CONFLICT (\"userId\", \"roleId\") DO NOTHING",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify the initial RBAC seed",
+        "sql": "SELECT (\n  (SELECT COUNT(*) FROM \"public\".\"role\" WHERE \"name\" IN ('ADMIN', 'CLIENT')) = 2\n  AND (SELECT COUNT(*) FROM \"public\".\"permission\" WHERE \"name\" IN (\n    'users.read',\n    'users.update',\n    'users.delete',\n    'roles.manage',\n    'permissions.manage',\n    'profile.read',\n    'profile.update'\n  )) = 7\n  AND (SELECT COUNT(*)\n    FROM \"public\".\"rolePermission\" rp\n    JOIN \"public\".\"role\" r ON r.\"id\" = rp.\"roleId\"\n    JOIN \"public\".\"permission\" p ON p.\"id\" = rp.\"permissionId\"\n    WHERE r.\"name\" = 'ADMIN'\n  ) = 7\n  AND (SELECT COUNT(*)\n    FROM \"public\".\"rolePermission\" rp\n    JOIN \"public\".\"role\" r ON r.\"id\" = rp.\"roleId\"\n    JOIN \"public\".\"permission\" p ON p.\"id\" = rp.\"permissionId\"\n    WHERE r.\"name\" = 'CLIENT'\n      AND p.\"name\" IN ('profile.read', 'profile.update')\n  ) = 2\n  AND NOT EXISTS (\n    SELECT 1\n    FROM \"public\".\"user\" u\n    WHERE NOT EXISTS (\n      SELECT 1\n      FROM \"public\".\"userRole\" ur\n      JOIN \"public\".\"role\" r ON r.\"id\" = ur.\"roleId\"\n      WHERE ur.\"userId\" = u.\"id\"\n        AND r.\"name\" = 'CLIENT'\n    )\n  )\n) AS \"result\"",
+        "params": []
+      }
+    ]
+  }
+]

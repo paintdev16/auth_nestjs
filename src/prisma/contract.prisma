@@ -1,0 +1,64 @@
+// use prisma-next
+
+model User {
+  id        Int    @id @default(autoincrement())
+  email     String @unique
+  password  String
+  name      String?
+  roleId    Int
+  authVersion Int @default(0)
+
+  createdAt temporal.createdAtString()
+  updatedAt temporal.updatedAtString()
+
+  role          Role           @relation(fields: [roleId], references: [id])
+  refreshTokens RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique
+  users       User[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id    Int              @id @default(autoincrement())
+  name  String           @unique
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       Int
+  permissionId Int
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+}
+
+model RefreshToken {
+  id        Int     @id @default(autoincrement())
+  tokenHash String
+  expiresAt String
+  revokedAt String?
+  userId    Int
+
+  createdAt temporal.createdAtString()
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model PasswordResetToken {
+  id        Int     @id @default(autoincrement())
+  tokenHash String
+  expiresAt String
+  usedAt    String?
+  userId    Int
+
+  createdAt temporal.createdAtString()
+
+  user User @relation(fields: [userId], references: [id])
+}
