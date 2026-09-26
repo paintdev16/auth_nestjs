@@ -15,6 +15,7 @@ export class UsersService {
       'id',
       'email',
       'name',
+      'roleId',
       'status',
       'emailVerifiedAt',
       'createdAt',
@@ -115,6 +116,85 @@ export class UsersService {
         }
       }
 
+      return updatedUser;
+    });
+  }
+
+  async changeRole(
+    userId: number,
+    requestedRoleId: number | null,
+    actor: { id: number; role: string | null },
+  ) {
+    if (userId === actor.id) {
+      throw new BadRequestException('No puedes cambiar tu propio rol');
+    }
+
+    return db.transaction(async (transaction) => {
+      const user = await transaction.orm.public.User.first((candidate) =>
+        candidate.id.eq(userId),
+      );
+      if (!user) throw new NotFoundException('Usuario no encontrado');
+
+      const currentRole = await transaction.orm.public.Role.first((candidate) =>
+        candidate.id.eq(user.roleId),
+      );
+      if (!currentRole) throw new BadRequestException('El usuario no tiene un rol válido');
+      if (currentRole.name === ROLES.ROOT && actor.role !== ROLES.ROOT) {
+        throw new BadRequestException('ADMIN no puede modificar el rol de un usuario ROOT');
+      }
+
+      let nextRole;
+      if (requestedRoleId === null) {
+        nextRole = await transaction.orm.public.Role.first((candidate) =>
+          candidate.name.eq(ROLES.CLIENT),
+        );
+      } else {
+        nextRole = await transaction.orm.public.Role.first((candidate) =>
+          candidate.id.eq(requestedRoleId),
+        );
+      }
+      if (!nextRole) {
+        throw new NotFoundException(
+          requestedRoleId === null ? 'El rol CLIENT no está configurado' : 'Rol no encontrado',
+        );
+      }
+      if (nextRole.name === ROLES.ROOT && actor.role !== ROLES.ROOT) {
+        throw new BadRequestException('Solo ROOT puede asignar el rol ROOT');
+      }
+
+      if (currentRole.name === ROLES.ROOT && nextRole.id !== currentRole.id) {
+        const rootUsers = await transaction.orm.public.User.where({
+          roleId: currentRole.id,
+        }).all();
+        if (rootUsers.length <= 1) {
+          throw new BadRequestException('No se puede quitar el último usuario ROOT');
+        }
+      }
+
+      const updatedUser = await transaction.orm.public.User.select(
+        'id',
+        'email',
+        'name',
+        'roleId',
+        'status',
+        'emailVerifiedAt',
+        'createdAt',
+        'updatedAt',
+      )
+        .where({ id: userId })
+        .update({ roleId: nextRole.id, authVersion: user.authVersion + 1 });
+
+      const sessions = await transaction.orm.public.RefreshToken.where({
+        userId,
+      }).all();
+      const revokedAt = new Date().toISOString();
+      for (const session of sessions) {
+        if (!session.revokedAt) {
+          await transaction.orm.public.RefreshToken.where({
+            id: session.id,
+          }).update({ revokedAt });
+        }
+      }
       return updatedUser;
     });
   }
