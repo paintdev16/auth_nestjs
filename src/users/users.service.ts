@@ -1,7 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { ROLES } from '../authorization/authorization.constants.js';
 import { db } from '../prisma/db.js';
+import { USER_STATUS } from './user-status.constants.js';
 
 @Injectable()
 export class UsersService {
@@ -10,6 +15,8 @@ export class UsersService {
       'id',
       'email',
       'name',
+      'status',
+      'emailVerifiedAt',
       'createdAt',
       'updatedAt',
     ).all();
@@ -56,6 +63,55 @@ export class UsersService {
     });
   }
 
+  async updateStatus(
+    userId: number,
+    status: (typeof USER_STATUS)[keyof typeof USER_STATUS],
+  ) {
+    return db.transaction(async (transaction) => {
+      const user = await transaction.orm.public.User.first((candidate) =>
+        candidate.id.eq(userId),
+      );
+
+      if (!user) {
+        throw new NotFoundException('Usuario no encontrado');
+      }
+
+      if (status === USER_STATUS.ACTIVE && !user.emailVerifiedAt) {
+        throw new BadRequestException(
+          'No se puede activar una cuenta sin correo verificado',
+        );
+      }
+
+      const updatedUser = await transaction.orm.public.User.select(
+        'id',
+        'email',
+        'name',
+        'roleId',
+        'status',
+        'emailVerifiedAt',
+        'createdAt',
+        'updatedAt',
+      )
+        .where({ id: userId })
+        .update({ status, authVersion: user.authVersion + 1 });
+
+      const sessions = await transaction.orm.public.RefreshToken.where({
+        userId,
+      }).all();
+      const revokedAt = new Date().toISOString();
+
+      for (const session of sessions) {
+        if (!session.revokedAt) {
+          await transaction.orm.public.RefreshToken.where({
+            id: session.id,
+          }).update({ revokedAt });
+        }
+      }
+
+      return updatedUser;
+    });
+  }
+
   async create(data: { email: string; password: string; name?: string }) {
     return db.transaction(async (transaction) => {
       const clientRole = await transaction.orm.public.Role.first((role) =>
@@ -71,6 +127,7 @@ export class UsersService {
         password: data.password,
         name: data.name ?? null,
         roleId: clientRole.id,
+        status: USER_STATUS.PENDING_VERIFICATION,
       });
 
       return user;

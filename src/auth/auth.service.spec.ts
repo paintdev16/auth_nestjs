@@ -5,6 +5,7 @@ import { jest } from '@jest/globals';
 import * as argon2 from 'argon2';
 
 import { UsersService } from '../users/users.service.js';
+import { EmailVerificationTokensService } from './email-verification-tokens.service.js';
 import { AuthService } from './auth.service.js';
 import { PasswordResetMailerService } from './password-reset-mailer.service.js';
 import { PasswordResetTokensService } from './password-reset-tokens.service.js';
@@ -19,6 +20,8 @@ describe('AuthService', () => {
     password: '',
     name: 'User',
     authVersion: 0,
+    status: 'ACTIVE',
+    emailVerifiedAt: '2026-01-01T00:00:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
   };
@@ -49,7 +52,13 @@ describe('AuthService', () => {
   };
   const jwtService = {
     signAsync:
-      jest.fn<(payload: { sub: number; email: string }) => Promise<string>>(),
+      jest.fn<
+        (payload: {
+          sub: number;
+          email: string;
+          ver: number;
+        }) => Promise<string>
+      >(),
   };
   const refreshTokensService = {
     issue: jest.fn<(userId: number) => Promise<string>>(),
@@ -65,6 +74,12 @@ describe('AuthService', () => {
   };
   const passwordResetMailerService = {
     send: jest.fn<(email: string, token: string) => Promise<void>>(),
+    sendVerification:
+      jest.fn<(email: string, token: string) => Promise<void>>(),
+  };
+  const emailVerificationTokensService = {
+    issue: jest.fn<(userId: number) => Promise<string>>(),
+    verify: jest.fn<(token: string) => Promise<number>>(),
   };
 
   beforeEach(async () => {
@@ -74,6 +89,7 @@ describe('AuthService', () => {
       permissions: ['profile.read', 'profile.update'],
     });
     refreshTokensService.issue.mockResolvedValue('1.refresh-secret');
+    emailVerificationTokensService.issue.mockResolvedValue('1.verify-secret');
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -97,6 +113,10 @@ describe('AuthService', () => {
         {
           provide: PasswordResetMailerService,
           useValue: passwordResetMailerService,
+        },
+        {
+          provide: EmailVerificationTokensService,
+          useValue: emailVerificationTokensService,
         },
       ],
     }).compile();

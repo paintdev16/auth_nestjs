@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -11,6 +12,8 @@ import { UsersService } from '../users/users.service.js';
 import { PasswordResetMailerService } from './password-reset-mailer.service.js';
 import { PasswordResetTokensService } from './password-reset-tokens.service.js';
 import { RefreshTokensService } from './refresh-tokens.service.js';
+import { EmailVerificationTokensService } from './email-verification-tokens.service.js';
+import { USER_STATUS } from '../users/user-status.constants.js';
 
 const PASSWORD_HASH_OPTIONS = {
   type: argon2.argon2id,
@@ -43,6 +46,7 @@ export class AuthService {
     private readonly refreshTokensService: RefreshTokensService,
     private readonly passwordResetTokensService: PasswordResetTokensService,
     private readonly passwordResetMailerService: PasswordResetMailerService,
+    private readonly emailVerificationTokensService: EmailVerificationTokensService,
   ) {}
 
   async register(data: { email: string; password: string; name?: string }) {
@@ -68,9 +72,17 @@ export class AuthService {
       const authorization = await this.usersService.findAuthorizationByUserId(
         user.id,
       );
+      const verificationToken = await this.emailVerificationTokensService.issue(
+        user.id,
+      );
+      await this.passwordResetMailerService.sendVerification(
+        user.email,
+        verificationToken,
+      );
 
       return {
         ...this.toSafeUser(user),
+        status: user.status,
         ...authorization,
       };
     } catch (error) {
@@ -95,6 +107,16 @@ export class AuthService {
 
     if (!passwordIsValid) {
       throw new UnauthorizedException('Correo o contraseña incorrectos');
+    }
+
+    if (user.status === USER_STATUS.PENDING_VERIFICATION) {
+      throw new ForbiddenException(
+        'Debes verificar tu correo antes de iniciar sesión',
+      );
+    }
+
+    if (user.status !== USER_STATUS.ACTIVE || !user.emailVerifiedAt) {
+      throw new ForbiddenException('La cuenta no está habilitada');
     }
 
     const authorization = await this.usersService.findAuthorizationByUserId(
@@ -132,6 +154,11 @@ export class AuthService {
     if (!user) {
       await this.refreshTokensService.revokeAll(rotated.userId);
       throw new UnauthorizedException('Refresh token inválido o expirado');
+    }
+
+    if (user.status !== USER_STATUS.ACTIVE || !user.emailVerifiedAt) {
+      await this.refreshTokensService.revokeAll(user.id);
+      throw new UnauthorizedException('La cuenta no está habilitada');
     }
 
     const authorization = await this.usersService.findAuthorizationByUserId(
@@ -234,6 +261,27 @@ export class AuthService {
     };
   }
 
+  async verifyEmail(token: string) {
+    await this.emailVerificationTokensService.verify(token);
+
+    return { message: 'Correo verificado; ya puedes iniciar sesión' };
+  }
+
+  async resendVerification(emailInput: string) {
+    const email = this.normalizeEmail(emailInput);
+    const user = await this.usersService.findByEmail(email);
+
+    if (user?.status === USER_STATUS.PENDING_VERIFICATION) {
+      const token = await this.emailVerificationTokensService.issue(user.id);
+      await this.passwordResetMailerService.sendVerification(user.email, token);
+    }
+
+    return {
+      message:
+        'Si la cuenta necesita verificación, recibirás un nuevo enlace por correo',
+    };
+  }
+
   private normalizeEmail(email: string): string {
     return email.trim().toLowerCase();
   }
@@ -252,6 +300,8 @@ export class AuthService {
     name: string | null;
     createdAt: unknown;
     updatedAt: unknown;
+    status: string;
+    emailVerifiedAt: string | null;
   }) {
     return {
       id: user.id,
@@ -259,6 +309,8 @@ export class AuthService {
       name: user.name,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+      status: user.status,
+      emailVerifiedAt: user.emailVerifiedAt,
     };
   }
 }

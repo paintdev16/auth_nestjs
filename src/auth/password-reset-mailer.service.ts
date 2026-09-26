@@ -68,7 +68,7 @@ export class PasswordResetMailerService
   async send(email: string, token: string): Promise<void> {
     const resetUrl = new URL(
       this.configService.get<string>('PASSWORD_RESET_URL') ??
-        'http://localhost:3000/reset-password',
+        'http://localhost:3001/reset-password',
     );
     resetUrl.searchParams.set('token', token);
 
@@ -81,6 +81,27 @@ export class PasswordResetMailerService
       });
     } catch (error) {
       this.logger.error('No se pudo enviar el correo de recuperación', error);
+    }
+  }
+
+  async sendVerification(email: string, token: string): Promise<void> {
+    const ttlHours =
+      this.configService.get<string>('EMAIL_VERIFICATION_TTL_HOURS') ?? '24';
+    const verificationUrl = new URL(
+      this.configService.get<string>('EMAIL_VERIFICATION_URL') ??
+        'http://localhost:3001/verify-email',
+    );
+    verificationUrl.searchParams.set('token', token);
+
+    try {
+      await this.sendMail({
+        to: email,
+        subject: 'Verifica tu correo electrónico',
+        text: `Confirma tu correo usando este enlace: ${verificationUrl.toString()}`,
+        html: `<p>Confirma tu correo electrónico:</p><p><a href="${verificationUrl.toString()}">Verificar correo</a></p><p>El enlace expira en ${ttlHours} horas.</p>`,
+      });
+    } catch (error) {
+      this.logger.error('No se pudo enviar el correo de verificación', error);
     }
   }
 

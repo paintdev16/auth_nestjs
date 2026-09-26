@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request } from 'express';
 
 import { AuthService } from './auth.service.js';
@@ -8,6 +8,10 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { RefreshTokenDto } from './dto/refresh-token.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import {
+  ResendVerificationDto,
+  VerifyEmailDto,
+} from './dto/verify-email.dto.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { LocalAuthGuard } from './local-auth.guard.js';
 
@@ -29,6 +33,8 @@ type LoginRequest = AuthenticatedRequest & {
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @UseGuards(ThrottlerGuard)
   @Post('register')
   register(@Body() body: RegisterDto) {
     return this.authService.register(body);
@@ -52,13 +58,15 @@ export class AuthController {
     return this.authService.logout(body.refreshToken);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(ThrottlerGuard, JwtAuthGuard)
   @Post('logout-all')
   logoutAll(@Req() request: AuthenticatedRequest) {
     return this.authService.logoutAll(request.user.id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(ThrottlerGuard, JwtAuthGuard)
   @Post('change-password')
   changePassword(
     @Req() request: AuthenticatedRequest,
@@ -81,6 +89,20 @@ export class AuthController {
   @Post('reset-password')
   resetPassword(@Body() body: ResetPasswordDto) {
     return this.authService.resetPassword(body.token, body.newPassword);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(ThrottlerGuard)
+  @Post('resend-verification')
+  resendVerification(@Body() body: ResendVerificationDto) {
+    return this.authService.resendVerification(body.email);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(ThrottlerGuard)
+  @Post('verify-email')
+  verifyEmail(@Body() body: VerifyEmailDto) {
+    return this.authService.verifyEmail(body.token);
   }
 
   @UseGuards(JwtAuthGuard)

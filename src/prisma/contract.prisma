@@ -7,6 +7,8 @@ model User {
   name      String?
   roleId    Int
   authVersion Int @default(0)
+  status String @default("ACTIVE")
+  emailVerifiedAt String?
 
   createdAt temporal.createdAtString()
   updatedAt temporal.updatedAtString()
@@ -14,6 +16,7 @@ model User {
   role          Role           @relation(fields: [roleId], references: [id])
   refreshTokens RefreshToken[]
   passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 }
 
 model Role {
@@ -52,6 +55,18 @@ model RefreshToken {
 }
 
 model PasswordResetToken {
+  id        Int     @id @default(autoincrement())
+  tokenHash String
+  expiresAt String
+  usedAt    String?
+  userId    Int
+
+  createdAt temporal.createdAtString()
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model EmailVerificationToken {
   id        Int     @id @default(autoincrement())
   tokenHash String
   expiresAt String

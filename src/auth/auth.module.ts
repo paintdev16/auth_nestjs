@@ -13,6 +13,8 @@ import { JwtStrategy } from './jwt.strategy.js';
 import { LocalStrategy } from './local.strategy.js';
 import { PasswordResetMailerService } from './password-reset-mailer.service.js';
 import { PasswordResetTokensService } from './password-reset-tokens.service.js';
+import { EmailVerificationTokensService } from './email-verification-tokens.service.js';
+import { TokenCleanupService } from './token-cleanup.service.js';
 
 @Module({
   imports: [
@@ -28,7 +30,8 @@ import { PasswordResetTokensService } from './password-reset-tokens.service.js';
       useFactory: (configService: ConfigService) => ({
         secret: configService.getOrThrow<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: '1h',
+          expiresIn:
+            configService.get<'15m' | '30m' | '1h'>('JWT_ACCESS_TTL') ?? '15m',
         },
       }),
     }),
@@ -40,6 +43,8 @@ import { PasswordResetTokensService } from './password-reset-tokens.service.js';
     AuthService,
     RefreshTokensService,
     PasswordResetTokensService,
+    EmailVerificationTokensService,
+    TokenCleanupService,
     PasswordResetMailerService,
     LocalStrategy,
     JwtStrategy,
