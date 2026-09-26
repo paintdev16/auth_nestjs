@@ -1,6 +1,7 @@
 export const ROLES = {
   ADMIN: 'ADMIN',
   CLIENT: 'CLIENT',
+  ROOT: 'ROOT',
 } as const;
 
 export const PERMISSIONS = {

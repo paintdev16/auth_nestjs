@@ -76,6 +76,13 @@ export class UsersService {
         throw new NotFoundException('Usuario no encontrado');
       }
 
+      const role = await transaction.orm.public.Role.first((candidate) =>
+        candidate.id.eq(user.roleId),
+      );
+      if (role?.name === ROLES.ROOT && status !== USER_STATUS.ACTIVE) {
+        throw new BadRequestException('No se puede bloquear ni desactivar al usuario ROOT');
+      }
+
       if (status === USER_STATUS.ACTIVE && !user.emailVerifiedAt) {
         throw new BadRequestException(
           'No se puede activar una cuenta sin correo verificado',

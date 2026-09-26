@@ -24,6 +24,18 @@ export function validateEnvironment(environment: Environment) {
     throw new Error('JWT_ACCESS_TTL debe ser 15m, 30m o 1h');
   }
 
+  const rootEmail = environment['ROOT_EMAIL'];
+  const rootPassword = environment['ROOT_PASSWORD'];
+  if ((rootEmail && !rootPassword) || (!rootEmail && rootPassword)) {
+    throw new Error('ROOT_EMAIL y ROOT_PASSWORD deben configurarse juntos');
+  }
+  if (rootEmail && typeof rootEmail === 'string' && !/^\S+@\S+\.\S+$/.test(rootEmail)) {
+    throw new Error('ROOT_EMAIL debe ser una dirección de correo válida');
+  }
+  if (rootPassword && typeof rootPassword === 'string' && rootPassword.length < 12) {
+    throw new Error('ROOT_PASSWORD debe tener al menos 12 caracteres');
+  }
+
   for (const origin of frontendUrl.split(',').map((item) => item.trim())) {
     try {
       const parsed = new URL(origin);
